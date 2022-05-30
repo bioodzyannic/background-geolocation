@@ -229,12 +229,12 @@ public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate 
             let status = CLLocationManager.authorizationStatus()
 	        	if status == .authorizedWhenInUse{
 	        	            locationManager.requestAlwaysAuthorization()
-                }else if status == .authorizedWhenInUse{
+                }else if status == .notDetermined{
 	        	            locationManager.requestWhenInUseAuthorization()
 	        	}
 
         } else {
-            call.resolve()
+            call.resolve(["success": true])
         }
 	    
 	}
