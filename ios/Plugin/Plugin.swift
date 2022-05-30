@@ -65,10 +65,10 @@ class Watcher {
     }
 }
 
-@objc(BackgroundGeolocation)
-public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
+@objc(AArrowBackgroundGeolocation)
+public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
     private var watchers = [Watcher]()
-
+    var permissionCallID: String?
     @objc public override func load() {
         UIDevice.current.isBatteryMonitoringEnabled = true
     }
@@ -195,8 +195,7 @@ public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
 	DispatchQueue.main.async {
     		        
     		        
-                        let status = CLLocationManager.authorizationStatus()
-	        	if status !== .authorizedAlways{
+	        	if CLLocationManager.authorizationStatus() != .authorizedAlways{
 	        		return call.resolve([
 	        		"success": true,
 	        		"message": "Permission denied."
@@ -212,7 +211,7 @@ public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
 	        		])
 	        	}
     		        
-    		        return call.resolve([[
+    		        return call.resolve([
     		        "success": true
     		        ])
     		               
@@ -221,16 +220,17 @@ public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
     
     }
     
-    @objc override func requestPermissions(_ call: CAPPluginCall) {
+    @objc override public func requestPermissions(_ call: CAPPluginCall) {
+        let locationManager: CLLocationManager = CLLocationManager()
 
         if CLLocationManager.authorizationStatus() == .notDetermined || CLLocationManager.authorizationStatus() == .authorizedWhenInUse{
             bridge?.saveCall(call)
             permissionCallID = call.callbackId
             let status = CLLocationManager.authorizationStatus()
 	        	if status == .authorizedWhenInUse{
-	        	            manager.requestAlwaysAuthorization()
-	        	}else if status == authorizedWhenInUse{
-	        	            manager.requestWhenInUseAuthorization()
+	        	            locationManager.requestAlwaysAuthorization()
+                }else if status == .authorizedWhenInUse{
+	        	            locationManager.requestWhenInUseAuthorization()
 	        	}
 
         } else {
@@ -290,7 +290,7 @@ public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
         // If this method is called before the user decides on a permission, as
         // it is on iOS 14 when the permissions dialog is presented, we ignore
         // it.
-        if let callID = permissionCallID, let call = bridge?.getSavedCall(callID) {
+        if let callID = permissionCallID, let call = bridge?.savedCall(withID: callID) {
 		checkPermissions(call)
 		bridge?.releaseCall(call)
     	}
