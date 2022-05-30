@@ -165,6 +165,80 @@ public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
             }
         }
     }
+    
+        @objc func openGPSSettings(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            guard let settingsUrl = URL(
+                string: UIApplication.openSettingsURLString
+            ) else {
+                return call.reject("No link to settings available")
+            }
+
+            if UIApplication.shared.canOpenURL(settingsUrl) {
+                UIApplication.shared.open(settingsUrl, completionHandler: {
+                    (success) in
+                    if (success) {
+                        return call.resolve()
+                    } else {
+                        return call.reject("Failed to open settings")
+                    }
+                })
+            } else {
+                return call.reject("Cannot open settings")
+            }
+        }
+    }
+    
+    
+    @objc func gpsEnabledAndPermissionsGiven(_ call: CAPPluginCall){
+    
+	DispatchQueue.main.async {
+    		        
+    		        
+                        let status = CLLocationManager.authorizationStatus()
+	        	if status !== .authorizedAlways{
+	        		return call.resolve([
+	        		"success": true,
+	        		"message": "Permission denied."
+	        		])
+	        		
+	        	}
+	        	
+	        	let gpsEnabled = CLLocationManager.locationServicesEnabled()
+	        	if !gpsEnabled{
+	        		return call.resolve([
+	        		"success": true,
+	        		"message": "Location services disabled."
+	        		])
+	        	}
+    		        
+    		        return call.resolve([[
+    		        "success": true
+    		        ])
+    		               
+        }	
+    
+    
+    }
+    
+    @objc override func requestPermissions(_ call: CAPPluginCall) {
+
+        if CLLocationManager.authorizationStatus() == .notDetermined || CLLocationManager.authorizationStatus() == .authorizedWhenInUse{
+            bridge?.saveCall(call)
+            permissionCallID = call.callbackId
+            let status = CLLocationManager.authorizationStatus()
+	        	if status == .authorizedWhenInUse{
+	        	            manager.requestAlwaysAuthorization()
+	        	}else if status == authorizedWhenInUse{
+	        	            manager.requestWhenInUseAuthorization()
+	        	}
+
+        } else {
+            call.resolve()
+        }
+	    
+	}
+    
 
     public func locationManager(
         _ manager: CLLocationManager,
@@ -216,6 +290,11 @@ public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
         // If this method is called before the user decides on a permission, as
         // it is on iOS 14 when the permissions dialog is presented, we ignore
         // it.
+        if let callID = permissionCallID, let call = bridge?.getSavedCall(callID) {
+		checkPermissions(call)
+		bridge?.releaseCall(call)
+    	}
+        
         if status != .notDetermined {
             if let watcher = self.watchers.first(
                 where: { $0.locationManager == manager }
