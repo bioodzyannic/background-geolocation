@@ -1,6 +1,7 @@
 package com.equimaps.capacitor_background_geolocation;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -17,15 +18,20 @@ import android.location.LocationManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.provider.Settings;
 
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Logger;
 import com.getcapacitor.NativePlugin;
+import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.android.BuildConfig;
+import com.getcapacitor.annotation.CapacitorPlugin;
+import com.getcapacitor.annotation.Permission;
+import com.getcapacitor.annotation.PermissionCallback;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.tasks.OnSuccessListener;
 
@@ -33,15 +39,21 @@ import org.json.JSONObject;
 
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 
-@NativePlugin(
-        permissions={
+@CapacitorPlugin(
+        permissions = {
                 // As of API level 31, the coarse permission MUST accompany
                 // the fine permission.
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION
+                @Permission(
+                        alias = "location",
+                        strings = {
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                        }
+                )
+
         },
+        name = "BackgroundGeolocation"
         // A random integer which is hopefully unique to this plugin.
-        permissionRequestCode = 28351
 )
 public class BackgroundGeolocation extends Plugin {
     private PluginCall callPendingPermissions = null;
@@ -62,9 +74,11 @@ public class BackgroundGeolocation extends Plugin {
                 call.reject("Permission denied.", "NOT_AUTHORIZED");
             }
         } else {
+
             if (!isLocationEnabled(getContext())) {
                 call.reject("Location services disabled.", "NOT_AUTHORIZED");
             }
+
         }
         if (call.getBoolean("stale", false)) {
             LocationServices.getFusedLocationProviderClient(
@@ -99,7 +113,7 @@ public class BackgroundGeolocation extends Plugin {
             try {
                 String name = getAppString(
                         "capacitor_background_geolocation_notification_icon",
-                        "mipmap/ic_launcher"
+                        "drawable/notification_icon"
                 );
                 String[] parts = name.split("/");
                 // It is actually necessary to set a valid icon for the notification to behave
@@ -162,6 +176,50 @@ public class BackgroundGeolocation extends Plugin {
     }
 
     @PluginMethod()
+    public String gpsEnabledAndPermissionsGiven(PluginCall call){
+        JSObject ret = new JSObject();
+
+        if (getPermissionState("location") != PermissionState.GRANTED) {
+            ret.put("success", false);
+            ret.put("message", "Permission denied.");
+            call.resolve(ret);
+
+            return "Permission denied.";
+        }
+
+        //if (!isIgnoreBatterySavingEnabled(getContext())) {
+            //call.reject("Battery saving enabled.", "NOT_AUTHORIZED");
+            //requestIgnoreBatterySaving(getContext());
+        //}
+
+        if (!isLocationEnabled(getContext())) {
+            ret.put("success", false);
+            ret.put("message", "Location services disabled.");
+            call.resolve(ret);
+
+            return "Location services disabled.";
+        }
+
+        ret.put("success", true);
+        call.resolve(ret);
+        return "OK";
+    }
+    @PluginMethod()
+    public void requestPermissions(PluginCall call){
+        if (getPermissionState("location") != PermissionState.GRANTED) {
+            requestPermissionForAlias("location", call, "locationPermissionCallback");
+        }else{
+            call.resolve();
+        }
+
+    }
+    @PermissionCallback
+    private void locationPermissionCallback(PluginCall call){
+        call.resolve();
+    }
+
+
+    @PluginMethod()
     public void removeWatcher(PluginCall call) {
         String callbackId = call.getString("id");
         if (callbackId == null) {
@@ -185,7 +243,14 @@ public class BackgroundGeolocation extends Plugin {
         call.resolve();
     }
 
-    // Checks if device-wide location services are disabled
+    @PluginMethod()
+    public void openGPSSettings(PluginCall call) {
+        Intent intent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+        getContext().startActivity(intent);
+        call.resolve();
+    }
+
+    // Checks if device-wide location services are  disabled
     private static Boolean isLocationEnabled(Context context)
     {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -202,6 +267,32 @@ public class BackgroundGeolocation extends Plugin {
 
         }
     }
+    private static Boolean isIgnoreBatterySavingEnabled(Context context)
+    {
+
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        String packageName = context.getPackageName();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return pm.isIgnoringBatteryOptimizations(packageName);
+        }
+        return true;
+    }
+
+    @SuppressLint("BatteryLife")
+    private static void requestIgnoreBatterySaving(Context context){
+        Intent intent = new Intent();
+        PowerManager pm = (PowerManager) context.getSystemService(Context.POWER_SERVICE);
+        String packageName = context.getPackageName();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!pm.isIgnoringBatteryOptimizations(packageName)){
+                intent.setAction(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                intent.setData(Uri.parse("package:" + packageName));
+
+                context.startActivity(intent);
+            }
+        }
+    }
+
 
     private static JSObject formatLocation(Location location) {
         JSObject obj = new JSObject();
