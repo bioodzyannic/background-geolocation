@@ -52,7 +52,7 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager;
                 )
 
         },
-        name = "BackgroundGeolocation"
+        name = "AArrowBackgroundGeolocation"
         // A random integer which is hopefully unique to this plugin.
 )
 public class BackgroundGeolocation extends Plugin {
