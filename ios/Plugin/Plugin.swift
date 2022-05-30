@@ -197,7 +197,7 @@ public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate 
     		        
 	        	if CLLocationManager.authorizationStatus() != .authorizedAlways{
 	        		return call.resolve([
-	        		"success": true,
+	        		"success": false,
 	        		"message": "Permission denied."
 	        		])
 	        		
@@ -206,7 +206,7 @@ public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate 
 	        	let gpsEnabled = CLLocationManager.locationServicesEnabled()
 	        	if !gpsEnabled{
 	        		return call.resolve([
-	        		"success": true,
+	        		"success": false,
 	        		"message": "Location services disabled."
 	        		])
 	        	}
