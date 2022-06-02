@@ -195,31 +195,33 @@ public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate 
 	DispatchQueue.main.async {
     		        
     		        
+                let gpsEnabled = CLLocationManager.locationServicesEnabled()
+                if !gpsEnabled{
+                    return call.resolve([
+                    "success": false,
+                    "message": "Location services disabled."
+                    ])
+                }
+        
 	        	if CLLocationManager.authorizationStatus() != .authorizedAlways{
 	        		return call.resolve([
 	        		"success": false,
 	        		"message": "Permission denied."
 	        		])
-	        		
+
 	        	}
-	        	
-	        	let gpsEnabled = CLLocationManager.locationServicesEnabled()
-	        	if !gpsEnabled{
-	        		return call.resolve([
-	        		"success": false,
-	        		"message": "Location services disabled."
-	        		])
-	        	}
-    		        
+
+
+
     		        return call.resolve([
     		        "success": true
     		        ])
-    		               
-        }	
-    
-    
+
+        }
+
+
     }
-    
+
     @objc override public func requestPermissions(_ call: CAPPluginCall) {
         let locationManager: CLLocationManager = CLLocationManager()
 
@@ -232,13 +234,15 @@ public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate 
                 }else if status == .notDetermined{
 	        	            locationManager.requestWhenInUseAuthorization()
 	        	}
+            call.resolve(["success":true, "perm:": CLLocationManager.authorizationStatus().rawValue])
+
 
         } else {
-            call.resolve(["success": true])
+            call.resolve(["success":true, "perm:": CLLocationManager.authorizationStatus().rawValue])
         }
-	    
+
 	}
-    
+
 
     public func locationManager(
         _ manager: CLLocationManager,
@@ -291,10 +295,9 @@ public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate 
         // it is on iOS 14 when the permissions dialog is presented, we ignore
         // it.
         if let callID = permissionCallID, let call = bridge?.savedCall(withID: callID) {
-		checkPermissions(call)
 		bridge?.releaseCall(call)
     	}
-        
+
         if status != .notDetermined {
             if let watcher = self.watchers.first(
                 where: { $0.locationManager == manager }
@@ -304,4 +307,3 @@ public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate 
         }
     }
 }
-
