@@ -65,10 +65,10 @@ class Watcher {
     }
 }
 
-@objc(BackgroundGeolocation)
-public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
+@objc(AArrowBackgroundGeolocation)
+public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
     private var watchers = [Watcher]()
-
+    var permissionCallID: String?
     @objc public override func load() {
         UIDevice.current.isBatteryMonitoringEnabled = true
     }
@@ -170,6 +170,84 @@ public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
             }
         }
     }
+    
+        @objc func openGPSSettings(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            guard let settingsUrl = URL(
+                string: UIApplication.openSettingsURLString
+            ) else {
+                return call.reject("No link to settings available")
+            }
+
+            if UIApplication.shared.canOpenURL(settingsUrl) {
+                UIApplication.shared.open(settingsUrl, completionHandler: {
+                    (success) in
+                    if (success) {
+                        return call.resolve()
+                    } else {
+                        return call.reject("Failed to open settings")
+                    }
+                })
+            } else {
+                return call.reject("Cannot open settings")
+            }
+        }
+    }
+    
+    
+    @objc func gpsEnabledAndPermissionsGiven(_ call: CAPPluginCall){
+    
+	DispatchQueue.main.async {
+    		        
+    		        
+                let gpsEnabled = CLLocationManager.locationServicesEnabled()
+                if !gpsEnabled{
+                    return call.resolve([
+                    "success": false,
+                    "message": "Location services disabled."
+                    ])
+                }
+        
+	        	if CLLocationManager.authorizationStatus() != .authorizedAlways{
+	        		return call.resolve([
+	        		"success": false,
+	        		"message": "Permission denied."
+	        		])
+
+	        	}
+
+
+
+    		        return call.resolve([
+    		        "success": true
+    		        ])
+
+        }
+
+
+    }
+
+    @objc override public func requestPermissions(_ call: CAPPluginCall) {
+        let locationManager: CLLocationManager = CLLocationManager()
+
+        if CLLocationManager.authorizationStatus() == .notDetermined || CLLocationManager.authorizationStatus() == .authorizedWhenInUse{
+            bridge?.saveCall(call)
+            permissionCallID = call.callbackId
+            let status = CLLocationManager.authorizationStatus()
+	        	if status == .authorizedWhenInUse{
+	        	            locationManager.requestAlwaysAuthorization()
+                }else if status == .notDetermined{
+	        	            locationManager.requestWhenInUseAuthorization()
+	        	}
+            call.resolve(["success":true, "perm:": CLLocationManager.authorizationStatus().rawValue])
+
+
+        } else {
+            call.resolve(["success":true, "perm:": CLLocationManager.authorizationStatus().rawValue])
+        }
+
+	}
+
 
     public func locationManager(
         _ manager: CLLocationManager,
@@ -221,6 +299,10 @@ public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
         // If this method is called before the user decides on a permission, as
         // it is on iOS 14 when the permissions dialog is presented, we ignore
         // it.
+        if let callID = permissionCallID, let call = bridge?.savedCall(withID: callID) {
+		bridge?.releaseCall(call)
+    	}
+
         if status != .notDetermined {
             if let watcher = self.watchers.first(
                 where: { $0.locationManager == manager }
@@ -230,4 +312,3 @@ public class BackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate {
         }
     }
 }
-

@@ -34,4 +34,7 @@ export interface BackgroundGeolocationPlugin {
         id: string
     }): Promise<void>;
     openSettings(): Promise<void>;
+    openGPSSettings(): Promise<void>;
+    gpsEnabledAndPermissionsGiven(): Promise<void>;
+    requestPermissions(): Promise<void>;
 }
