@@ -170,6 +170,20 @@ public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate 
             }
         }
     }
+
+    @objc func getCurrentPermissions(_ call: CAPPluginCall){
+
+        // CLLocationManager requires main thread
+        DispatchQueue.main.async {
+
+            call.resolve(
+                ["success": true,
+                "permission": CLLocationManager.authorizationStatus()
+                ])            
+
+        }
+
+    }
     
         @objc func openGPSSettings(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
