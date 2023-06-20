@@ -178,7 +178,7 @@ public class AArrowBackgroundGeolocation : CAPPlugin, CLLocationManagerDelegate 
 
             call.resolve(
                 ["success": true,
-                "permission": CLLocationManager.authorizationStatus()
+                "permission": CLLocationManager.authorizationStatus().rawValue
                 ])            
 
         }
