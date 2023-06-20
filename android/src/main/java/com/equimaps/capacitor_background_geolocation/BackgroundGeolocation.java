@@ -210,6 +210,19 @@ public class BackgroundGeolocation extends Plugin {
         call.resolve(ret);
         return "OK";
     }
+
+    @PluginMethod()
+    public String getCurrentPermissions(PluginCall call){
+        JSObject ret = new JSObject();
+
+            ret.put("success", false);
+            ret.put("permission", getPermissionState("location") );
+            call.resolve(ret);
+
+            return "Permission Status.";
+
+    }
+
     @PluginMethod()
     public void requestPermissions(PluginCall call){
         if (getPermissionState("location") != PermissionState.GRANTED) {
